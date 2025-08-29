@@ -62,16 +62,17 @@ export async function generateSubjectExcelFile(
 
   // Student data rows (starting from row 6)
   subject.students.forEach((student, index) => {
+    const studentScores = student.scores || [0, 0, 0, 0, 0, 0]; // Default to zeros if no scores
     data.push([
       index + 1, // Sequential numbering
       student.studentId,
       student.fullName,
-      9, // All score columns filled with 9
-      9,
-      9,
-      9,
-      9,
-      9
+      studentScores[0] || 0, // Score 1
+      studentScores[1] || 0, // Score 4
+      studentScores[2] || 0, // Score 5
+      studentScores[3] || 0, // Score 6
+      studentScores[4] || 0, // Score 7
+      studentScores[5] || 0  // Score 8
     ]);
   });
 

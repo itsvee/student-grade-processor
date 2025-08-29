@@ -12,6 +12,7 @@ export interface SubjectData {
   students: {
     studentId: string;
     fullName: string;
+    scores: number[];
   }[];
 }
 

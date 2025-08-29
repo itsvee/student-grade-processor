@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { StudentData, SubjectData, FileValidationResult } from '@/types';
+import { processScoreArray, validateScoreArray } from './scoreUtils';
 
 export function validateExcelFile(file: File): FileValidationResult {
   const errors: string[] = [];
@@ -54,7 +55,17 @@ export async function parseExcelFile(file: File): Promise<{
         }
 
         console.log('File read successfully, parsing Excel...');
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, { 
+          type: 'array',
+          dense: true, // Enable dense mode for better performance with large files
+          cellFormula: false, // Don't parse formulas to improve performance
+          cellHTML: false, // Don't parse HTML to improve performance
+          cellNF: false, // Don't parse number formats to improve performance
+          cellText: false, // Don't parse text to improve performance
+          cellDates: false, // Don't parse dates to improve performance
+          sheetStubs: false, // Don't generate stubs for empty cells
+          bookVBA: false // Don't parse VBA to improve performance
+        });
         
         if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
           reject(new Error('ไฟล์ Excel ไม่มี worksheet'));
@@ -108,7 +119,7 @@ export async function parseExcelFile(file: File): Promise<{
         }
 
         const studentData: StudentData[] = [];
-        const subjectCounts: { [key: string]: { studentId: string; fullName: string }[] } = {};
+        const subjectCounts: { [key: string]: { studentId: string; fullName: string; scores: number[] }[] } = {};
 
         // Find subject columns (starting from column J, index 9)
         const subjectColumns: { [key: string]: number } = {};
@@ -159,12 +170,19 @@ export async function parseExcelFile(file: File): Promise<{
             continue;
           }
 
-          // Parse scores (columns D-I, indices 3-8)
-          const scores: number[] = [];
-          for (let j = 3; j <= 8; j++) {
-            const scoreValue = row[j];
-            const score = typeof scoreValue === 'number' ? scoreValue : parseFloat(String(scoreValue || 0)) || 0;
-            scores.push(score);
+          // Parse scores (columns D-I, indices 3-8) using utility functions
+          const scores = processScoreArray(row, 3, 8, {
+            defaultValue: 0,
+            minValue: 0,
+            maxValue: 100,
+            decimalPlaces: 2,
+            allowNegative: false
+          });
+          
+          // Validate scores and log any issues
+          const scoreValidation = validateScoreArray(scores, 0, 100);
+          if (!scoreValidation.isValid) {
+            console.warn(`Score validation issues for student ${studentId}:`, scoreValidation.errors);
           }
 
           // Parse subject enrollments
@@ -176,7 +194,7 @@ export async function parseExcelFile(file: File): Promise<{
             subjects[subjectCode] = isEnrolled;
 
             if (isEnrolled) {
-              subjectCounts[subjectCode].push({ studentId, fullName });
+              subjectCounts[subjectCode].push({ studentId, fullName, scores });
             }
           }
 
@@ -189,7 +207,7 @@ export async function parseExcelFile(file: File): Promise<{
           });
 
           studentsProcessed++;
-          console.log(`Processed student ${studentsProcessed}: ${studentId} - ${fullName}`);
+          console.log(`Processed student ${studentsProcessed}: ${studentId} - ${fullName}, scores: [${scores.join(', ')}]`);
         }
 
         console.log(`Processed ${studentsProcessed} students`);
