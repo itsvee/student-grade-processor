@@ -18,6 +18,7 @@ export interface SubjectData {
 export interface SubjectConfig {
   subjectCode: string;
   subjectName: string;
+  subjectUnit: string;
 }
 
 export interface ProcessingProgress {

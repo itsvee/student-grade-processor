@@ -105,7 +105,8 @@ export default function ProcessingStatus({
     if (onSubjectConfigUpdate) {
       const configs = subjectData.map(subject => ({
         subjectCode: subject.subjectCode,
-        subjectName: subject.subjectCode === subjectCode ? tempSubjectName : (subject.subjectName || '')
+        subjectName: subject.subjectCode === subjectCode ? tempSubjectName : (subject.subjectName || ''),
+        subjectUnit: ''
       }));
       onSubjectConfigUpdate(configs);
     }

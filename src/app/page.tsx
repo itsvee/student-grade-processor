@@ -10,7 +10,6 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [studentData, setStudentData] = useState<StudentData[]>([]);
   const [subjectData, setSubjectData] = useState<SubjectData[]>([]);
-  const [subjectConfigs, setSubjectConfigs] = useState<SubjectConfig[]>([]);
   const [semester, setSemester] = useState<number>(2);
   const [academicYear, setAcademicYear] = useState<number>(2567);
   const [termEducation, setTermEducation] = useState<string>('กลางภาค');
@@ -41,7 +40,6 @@ export default function Home() {
   };
 
   const handleSubjectConfigUpdate = (configs: SubjectConfig[]) => {
-    setSubjectConfigs(configs);
     // Update subjectData with the new configurations
     setSubjectData(prevData => 
       prevData.map(subject => {

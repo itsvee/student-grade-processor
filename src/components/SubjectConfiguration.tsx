@@ -20,7 +20,7 @@ export default function SubjectConfiguration({
       initial[subject.subjectCode] = {
         subjectCode: subject.subjectCode,
         subjectName: subject.subjectName || '',
-        subjectUnit: subject.subjectUnit || ''
+        subjectUnit: ''
       };
     });
     return initial;
@@ -30,7 +30,7 @@ export default function SubjectConfiguration({
     setEditingSubject(subjectCode);
   };
 
-  const handleSave = (subjectCode: string) => {
+  const handleSave = () => {
     setEditingSubject(null);
     onSubjectConfigUpdate(Object.values(configurations));
   };
@@ -119,7 +119,7 @@ export default function SubjectConfiguration({
                   {isEditing ? (
                     <>
                       <button
-                        onClick={() => handleSave(subject.subjectCode)}
+                        onClick={handleSave}
                         className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-md transition-colors"
                         title="บันทึก"
                       >
