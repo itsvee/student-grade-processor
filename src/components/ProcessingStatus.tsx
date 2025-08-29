@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowDownTrayIcon, PlayIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon, EyeIcon } from '@heroicons/react/24/outline';
-import { StudentData, SubjectData, ProcessingProgress } from '@/types';
-import { generateExcelFiles, downloadAsZip } from '@/lib/excelGenerator';
+import { ArrowDownTrayIcon, PlayIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon, EyeIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { StudentData, SubjectData, SubjectConfig, ProcessingProgress } from '@/types';
+import { generateExcelFiles, downloadAsZip, generateFileName } from '@/lib/excelGenerator';
 import StudentListModal from './StudentListModal';
 
 interface ProcessingStatusProps {
@@ -11,9 +11,18 @@ interface ProcessingStatusProps {
   studentData: StudentData[];
   isProcessing: boolean;
   progress: ProcessingProgress | null;
+  semester: number;
+  academicYear: number;
+  termEducation: string;
+  groupNumber: string;
   onProcessingStart: () => void;
   onProcessingComplete: () => void;
   onProgressUpdate: (progress: ProcessingProgress) => void;
+  onSubjectConfigUpdate?: (configs: SubjectConfig[]) => void;
+  onSemesterChange?: (semester: number) => void;
+  onAcademicYearChange?: (year: number) => void;
+  onTermEducationChange?: (term: string) => void;
+  onGroupNumberChange?: (group: string) => void;
 }
 
 interface ProcessingError {
@@ -27,9 +36,18 @@ export default function ProcessingStatus({
   studentData,
   isProcessing,
   progress,
+  semester,
+  academicYear,
+  termEducation,
+  groupNumber,
   onProcessingStart,
   onProcessingComplete,
-  onProgressUpdate
+  onProgressUpdate,
+  onSubjectConfigUpdate,
+  onSemesterChange,
+  onAcademicYearChange,
+  onTermEducationChange,
+  onGroupNumberChange
 }: ProcessingStatusProps) {
   const [generatedFiles, setGeneratedFiles] = useState<{ [key: string]: Blob }>({});
   const [isGenerating, setIsGenerating] = useState(false);
@@ -42,6 +60,8 @@ export default function ProcessingStatus({
   }>({ filesGenerated: 0, totalSize: 0 });
   const [selectedSubject, setSelectedSubject] = useState<SubjectData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingSubject, setEditingSubject] = useState<string | null>(null);
+  const [tempSubjectName, setTempSubjectName] = useState<string>('');
 
   const clearErrors = () => {
     setErrors([]);
@@ -76,6 +96,28 @@ export default function ProcessingStatus({
     setSelectedSubject(null);
   };
 
+  const handleEditSubjectName = (subjectCode: string, currentName?: string) => {
+    setEditingSubject(subjectCode);
+    setTempSubjectName(currentName || '');
+  };
+
+  const handleSaveSubjectName = (subjectCode: string) => {
+    if (onSubjectConfigUpdate) {
+      const configs = subjectData.map(subject => ({
+        subjectCode: subject.subjectCode,
+        subjectName: subject.subjectCode === subjectCode ? tempSubjectName : (subject.subjectName || '')
+      }));
+      onSubjectConfigUpdate(configs);
+    }
+    setEditingSubject(null);
+    setTempSubjectName('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSubject(null);
+    setTempSubjectName('');
+  };
+
   const handleProcessAll = async () => {
     onProcessingStart();
     setIsGenerating(true);
@@ -99,7 +141,7 @@ export default function ProcessingStatus({
         });
 
         try {
-          const excelBuffer = await generateExcelFiles([subject]);
+          const excelBuffer = await generateExcelFiles([subject], semester, academicYear);
           const blob = new Blob([excelBuffer[subject.subjectCode]], {
             type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
           });
@@ -139,10 +181,10 @@ export default function ProcessingStatus({
         throw new Error('ไม่สามารถสร้างไฟล์ใดๆ ได้');
       }
 
-      const allFiles = await generateExcelFiles(successfulSubjects);
+      const allFiles = await generateExcelFiles(successfulSubjects, semester, academicYear);
       
       // Download as ZIP
-      await downloadAsZip(allFiles);
+      await downloadAsZip(allFiles, termEducation, groupNumber);
 
       const completedTime = new Date();
       setProcessingStats(prev => ({ ...prev, completed: completedTime }));
@@ -193,7 +235,7 @@ export default function ProcessingStatus({
         return;
       }
 
-      const excelBuffer = await generateExcelFiles([subject]);
+      const excelBuffer = await generateExcelFiles([subject], semester, academicYear);
       const blob = new Blob([excelBuffer[subjectCode]], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
@@ -206,7 +248,7 @@ export default function ProcessingStatus({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `แบบบันทึกคะแนนกลางภาค-${subjectCode}.xlsx`;
+      link.download = generateFileName(subjectCode, termEducation, groupNumber);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -220,6 +262,79 @@ export default function ProcessingStatus({
 
   return (
     <div className="space-y-6">
+      {/* Global Configuration */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="font-medium text-blue-900 mb-3 flex items-center">
+          <div className="w-2 h-2 bg-blue-600 rounded-full mr-2" />
+          ตั้งค่าภาคเรียนและปีการศึกษา
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-blue-800 mb-2">
+              ภาคเรียนที่:
+            </label>
+            <input
+              type="number"
+              value={semester}
+              onChange={(e) => onSemesterChange?.(parseInt(e.target.value) || 1)}
+              min="1"
+              max="3"
+              className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
+              disabled={isProcessing}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-blue-800 mb-2">
+              ปีการศึกษา:
+            </label>
+            <input
+              type="number"
+              value={academicYear}
+              onChange={(e) => onAcademicYearChange?.(parseInt(e.target.value) || new Date().getFullYear() + 543)}
+              min="2500"
+              max="2600"
+              className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
+              disabled={isProcessing}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-blue-800 mb-2">
+              ระยะเวลาการสอบ:
+            </label>
+            <input
+              type="text"
+              value={termEducation}
+              onChange={(e) => onTermEducationChange?.(e.target.value)}
+              placeholder="เช่น กลางภาค, ปลายภาค"
+              className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
+              disabled={isProcessing}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-blue-800 mb-2">
+              หมายเลขกลุ่ม:
+            </label>
+            <input
+              type="text"
+              value={groupNumber}
+              onChange={(e) => onGroupNumberChange?.(e.target.value)}
+              placeholder="เช่น 21019"
+              className="w-full px-3 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
+              disabled={isProcessing}
+            />
+          </div>
+        </div>
+        
+        <div className="mt-3 space-y-2 text-sm text-blue-700 bg-blue-100 rounded-lg p-3">
+          <div><strong>ภาคเรียน:</strong> ภาคเรียนที่ {semester} ปีการศึกษา {academicYear}</div>
+          <div><strong>ชื่อไฟล์:</strong> แบบบันทึกคะแนน{termEducation}-[รหัสวิชา]-กลุ่ม-{groupNumber}.xlsx</div>
+        </div>
+      </div>
+
       {/* Error Display */}
       {errors.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -326,7 +441,7 @@ export default function ProcessingStatus({
       {subjectData.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            ดาวน์โหลดแยกตามรายวิชา
+            รายวิชาและการตั้งค่า
             {processingStats.filesGenerated > 0 && (
               <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
                 {processingStats.filesGenerated}/{subjectData.length} พร้อม
@@ -339,7 +454,61 @@ export default function ProcessingStatus({
               <div key={index} className="bg-gray-50 hover:bg-gray-100 rounded-lg p-4 transition-colors duration-200">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 text-lg">{subject.subjectCode}</h4>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded font-medium">
+                        {subject.subjectCode}
+                      </span>
+                      {generatedFiles[subject.subjectCode] && (
+                        <CheckCircleIcon className="w-4 h-4 text-green-600" />
+                      )}
+                    </div>
+                    
+                    {/* Subject Name Editing */}
+                    <div className="mb-2">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        ชื่อวิชา (ใช้ในไฟล์ Excel):
+                      </label>
+                      {editingSubject === subject.subjectCode ? (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-700 px-2 py-1">{subject.subjectCode}</span>
+                          <input
+                            type="text"
+                            value={tempSubjectName}
+                            onChange={(e) => setTempSubjectName(e.target.value)}
+                            className="flex-1 px-3 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            placeholder="เช่น การพัฒนาตนเอง"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleSaveSubjectName(subject.subjectCode)}
+                            className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
+                          >
+                            บันทึก
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="px-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 text-xs"
+                          >
+                            ยกเลิก
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <div className="flex-1 px-3 py-1 bg-white border border-gray-200 rounded-md text-sm">
+                            {subject.subjectName ? `${subject.subjectCode} ${subject.subjectName}` : subject.subjectCode}
+                          </div>
+                          <button
+                            onClick={() => handleEditSubjectName(subject.subjectCode, subject.subjectName)}
+                            disabled={isGenerating}
+                            className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded disabled:opacity-50"
+                            title="แก้ไขชื่อวิชา"
+                          >
+                            <PencilIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     <p className="text-sm text-gray-600 mt-1">
                       {subject.students.length} นักเรียน
                       {generatedFiles[subject.subjectCode] && (
@@ -352,12 +521,6 @@ export default function ProcessingStatus({
                       {subject.students.slice(0, 3).map(student => student.fullName).join(', ')}
                       {subject.students.length > 3 && ` และอีก ${subject.students.length - 3} คน`}
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
-                    {generatedFiles[subject.subjectCode] && (
-                      <CheckCircleIcon className="w-5 h-5 text-green-600" />
-                    )}
                   </div>
                 </div>
 

@@ -8,10 +8,16 @@ export interface StudentData {
 
 export interface SubjectData {
   subjectCode: string;
+  subjectName?: string;
   students: {
     studentId: string;
     fullName: string;
   }[];
+}
+
+export interface SubjectConfig {
+  subjectCode: string;
+  subjectName: string;
 }
 
 export interface ProcessingProgress {

@@ -4,12 +4,17 @@ import { useState } from 'react';
 import FileUpload from '@/components/FileUpload';
 import FilePreview from '@/components/FilePreview';
 import ProcessingStatus from '@/components/ProcessingStatus';
-import { StudentData, SubjectData, ProcessingProgress } from '@/types';
+import { StudentData, SubjectData, SubjectConfig, ProcessingProgress } from '@/types';
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [studentData, setStudentData] = useState<StudentData[]>([]);
   const [subjectData, setSubjectData] = useState<SubjectData[]>([]);
+  const [subjectConfigs, setSubjectConfigs] = useState<SubjectConfig[]>([]);
+  const [semester, setSemester] = useState<number>(2);
+  const [academicYear, setAcademicYear] = useState<number>(2567);
+  const [termEducation, setTermEducation] = useState<string>('กลางภาค');
+  const [groupNumber, setGroupNumber] = useState<string>('21019');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState<ProcessingProgress | null>(null);
 
@@ -33,6 +38,20 @@ export default function Home() {
 
   const handleProgressUpdate = (progress: ProcessingProgress) => {
     setProcessingProgress(progress);
+  };
+
+  const handleSubjectConfigUpdate = (configs: SubjectConfig[]) => {
+    setSubjectConfigs(configs);
+    // Update subjectData with the new configurations
+    setSubjectData(prevData => 
+      prevData.map(subject => {
+        const config = configs.find(c => c.subjectCode === subject.subjectCode);
+        return {
+          ...subject,
+          subjectName: config?.subjectName || subject.subjectName
+        };
+      })
+    );
   };
 
   return (
@@ -103,6 +122,7 @@ export default function Home() {
           </section>
         )}
 
+
         {/* Processing Section */}
         {subjectData.length > 0 && (
           <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 hover:shadow-md transition-shadow duration-200">
@@ -117,9 +137,18 @@ export default function Home() {
               studentData={studentData}
               isProcessing={isProcessing}
               progress={processingProgress}
+              semester={semester}
+              academicYear={academicYear}
+              termEducation={termEducation}
+              groupNumber={groupNumber}
               onProcessingStart={handleProcessingStart}
               onProcessingComplete={handleProcessingComplete}
               onProgressUpdate={handleProgressUpdate}
+              onSubjectConfigUpdate={handleSubjectConfigUpdate}
+              onSemesterChange={setSemester}
+              onAcademicYearChange={setAcademicYear}
+              onTermEducationChange={setTermEducation}
+              onGroupNumberChange={setGroupNumber}
             />
           </section>
         )}

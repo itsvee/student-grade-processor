@@ -2,13 +2,20 @@ import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { SubjectData } from '@/types';
 
+// Generate custom filename based on the format: แบบบันทึกคะแนน{กลางภาค}-{ทช11003}-กลุ่ม-{21019}.xlsx
+export function generateFileName(subjectCode: string, termEducation: string = 'กลางภาค', groupNumber: string = '21019'): string {
+  return `แบบบันทึกคะแนน${termEducation}-${subjectCode}-กลุ่ม-${groupNumber}.xlsx`;
+}
+
 export async function generateExcelFiles(
-  subjectData: SubjectData[]
+  subjectData: SubjectData[],
+  semester: number = 2,
+  academicYear: number = 2567
 ): Promise<{ [subjectCode: string]: ArrayBuffer }> {
   const files: { [subjectCode: string]: ArrayBuffer } = {};
 
   for (const subject of subjectData) {
-    const excelBuffer = await generateSubjectExcelFile(subject);
+    const excelBuffer = await generateSubjectExcelFile(subject, semester, academicYear);
     files[subject.subjectCode] = excelBuffer;
   }
 
@@ -16,7 +23,9 @@ export async function generateExcelFiles(
 }
 
 export async function generateSubjectExcelFile(
-  subject: SubjectData
+  subject: SubjectData,
+  semester: number = 2,
+  academicYear: number = 2567
 ): Promise<ArrayBuffer> {
   // Create workbook and worksheet
   const workbook = XLSX.utils.book_new();
@@ -24,11 +33,14 @@ export async function generateSubjectExcelFile(
   // Prepare data according to specification
   const data: (string | number)[][] = [];
   
-  // Row 1: Title with subject code
-  data.push([`แบบบันทึกคะแนนกลางภาค วิชา ${subject.subjectCode}`]);
+  // Row 1: Title with subject code and appended name
+  const subjectTitle = subject.subjectName 
+    ? `แบบบันทึกคะแนนกลางภาค วิชา ${subject.subjectCode} ${subject.subjectName}`
+    : `แบบบันทึกคะแนนกลางภาค วิชา ${subject.subjectCode}`;
+  data.push([subjectTitle]);
   
-  // Row 2: Academic year
-  data.push(['ภาคเรียนที่ 2 ปีการศึกษา 2567']);
+  // Row 2: Dynamic academic year and semester
+  data.push([`ภาคเรียนที่ ${semester} ปีการศึกษา ${academicYear}`]);
   
   // Row 3: Institution
   data.push(['ศูนย์การศึกษานอกระบบและการศึกษาตามอัธยาศัยอำเภอเมืองนครสวรรค์']);
@@ -169,12 +181,16 @@ export async function generateSubjectExcelFile(
   return excelBuffer;
 }
 
-export async function downloadAsZip(files: { [subjectCode: string]: ArrayBuffer }): Promise<void> {
+export async function downloadAsZip(
+  files: { [subjectCode: string]: ArrayBuffer }, 
+  termEducation: string = 'กลางภาค', 
+  groupNumber: string = '21019'
+): Promise<void> {
   const zip = new JSZip();
 
   // Add each Excel file to ZIP
   Object.entries(files).forEach(([subjectCode, buffer]) => {
-    const fileName = `แบบบันทึกคะแนนกลางภาค-${subjectCode}.xlsx`;
+    const fileName = generateFileName(subjectCode, termEducation, groupNumber);
     zip.file(fileName, buffer);
   });
 
@@ -185,7 +201,7 @@ export async function downloadAsZip(files: { [subjectCode: string]: ArrayBuffer 
   const url = URL.createObjectURL(zipContent);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'แบบบันทึกคะแนนทุกวิชา.zip';
+  link.download = `แบบบันทึกคะแนน${termEducation}-ทุกวิชา-กลุ่ม-${groupNumber}.zip`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
