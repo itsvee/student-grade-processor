@@ -43,7 +43,7 @@ export async function generateSubjectExcelFile(
   data.push([`ภาคเรียนที่ ${semester} ปีการศึกษา ${academicYear}`]);
   
   // Row 3: Institution
-  data.push(['ศูนย์การศึกษานอกระบบและการศึกษาตามอัธยาศัยอำเภอเมืองนครสวรรค์']);
+  data.push(['ศูนย์ส่งเสริมการเรียนรู้ระดับอำเภอเมืองนครสวรรค์']);
   
   // Row 4: Table headers (merged header row)
   data.push([
